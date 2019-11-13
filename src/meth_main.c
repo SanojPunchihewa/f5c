@@ -296,7 +296,7 @@ int meth_main(int argc, char* argv[], int8_t mode) {
         } else if(c=='o'){
             OUTPUT_FILE_PATH = optarg;
             if(mode == 0){
-                OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "a");
+                OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "w");
                 if(OUTPUT_FILE_POINTER == NULL) {
                     ERROR("Could not open output file path %s", OUTPUT_FILE_PATH);
                     exit(1);

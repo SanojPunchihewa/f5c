@@ -236,7 +236,7 @@ int freq_main(int argc, char **argv) {
             case 'o':
                 if (strcmp(optarg, "-") != 0) {
                     char* OUTPUT_FILE_PATH = optarg;
-                    OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "a");
+                    OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "w");
                     if(OUTPUT_FILE_POINTER == NULL) {
                         ERROR("Could not open output file path %s", OUTPUT_FILE_PATH);
                         exit(1);

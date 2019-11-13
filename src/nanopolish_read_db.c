@@ -19,6 +19,7 @@
 #include <htslib/faidx.h>
 #include <htslib/kseq.h>
 #include <map>
+#include "error.h"
 
 #define READ_DB_SUFFIX ".readdb"
 #define GZIPPED_READS_SUFFIX ".index"
@@ -284,7 +285,6 @@ void ReadDB::print_stats() const {
     for (const auto& iter : m_data) {
         num_reads_with_path += iter.second.signal_data_path != "";
     }
-    fprintf(stderr,
-            "[readdb] num reads: %zu, num reads with path to fast5: %zu\n",
+    INFO("[readdb] num reads: %zu, num reads with path to fast5: %zu",
             m_data.size(), num_reads_with_path);
 }

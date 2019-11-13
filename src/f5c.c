@@ -1064,6 +1064,7 @@ void output_db(core_t* core, db_t* db) {
     }
 
     fflush(OUTPUT_FILE_POINTER);
+    fclose(OUTPUT_FILE_POINTER);
 
 }
 
