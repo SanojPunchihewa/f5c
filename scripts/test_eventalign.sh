@@ -45,9 +45,9 @@ download_test_set() {
 
 
 handle_tests() {
-	numfailed=$(wc -l < ${testdir}/floatdiff.txt)
-	numcases=$(wc -l < ${testdir}/meth_float.txt)
-	numres=$(wc -l < ${testdir}/result_float.txt)
+	numfailed=$(cat  ${testdir}/joined_diff.txt | awk '{print $NF}' | sort -u -k1,1 | wc -l)
+	numcases=$(wc -l < ${testdir}/nanopolish.summary.txt)
+	numres=$(wc -l < ${testdir}/f5c.summary.txt)
 	echo "$numfailed of $numcases test cases deviated."
 	missing=$(echo "$numcases-$numres" | bc)
 	echo "$missing entries in the truthset are missing in the testset"
@@ -56,33 +56,48 @@ handle_tests() {
 	echo "Validation passed"
 }
 
+handle_tests2() {
+	numfailed=$(cat  ${testdir}/joined_diff.txt |  wc -l)
+	numcases=$(wc -l < ${testdir}/nanopolish.txt)
+	numres=$(wc -l < ${testdir}/f5c.txt)
+	echo "$numfailed of $numcases test cases deviated."
+	missing=$(echo "$numcases-$numres" | bc)
+	echo "$missing entries in the truthset are missing in the testset"
+	failp=$(echo "$numfailed/$numcases" | bc)
+	[ "$failp" -gt 0 ] && die "${1}: Validation failed"
+	echo "Validation passed"
+}
+
+
 execute_test() {
-
+	echo "----------------comparing summaries---------------------------------------------"
+	tail -n +2 ${testdir}/eventalign.summary.exp | awk '{print $2"\t"$5"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$11"\t"$12"\t"$13}' > ${testdir}/nanopolish.summary.txt
+	tail -n +2 ${testdir}/f5c_event_align.summary.txt | awk '{print $2"\t"$6"\t"$7"\t"$8"\t"$9"\t"$10"\t"$11"\t"$12"\t"$13"\t"$14}' > ${testdir}/f5c.summary.txt
+	join ${testdir}/nanopolish.summary.txt ${testdir}/f5c.summary.txt > ${testdir}/joined_results.txt
+	#if [ $testdir = test/chr22_meth_example ]; then
+	awk -f  scripts/test_eventalign_summary.awk ${testdir}/joined_results.txt > ${testdir}/joined_diff.txt || handle_tests "${file}"
+	#else	
+	#	awk -f  scripts/test_eventalign_summary.awk ${testdir}/joined_results.txt || die "${file}: Validation failed"
+	#fi
+	echo "----------------summaries are good---------------------------------------------"
+	echo "----------------comparing full results-------------------------------------------"
 	if [ $testdir = test/chr22_meth_example ]; then
-		grep -w "chr20" ${testdir}/result.txt | awk '{print $1$2$3$4$8$9$10"\t"$5"\t"$6"\t"$7}' > ${testdir}/result_float.txt
-		grep -w "chr20" ${testdir}/meth.exp | awk '{print $1$2$3$4$8$9$10"\t"$5"\t"$6"\t"$7}'  > ${testdir}/meth_float.txt
+		echo "event by event test not implemented not yet implemented!"
+	else
+		test -d ${testdir}_big_testresults || mkdir ${testdir}_big_testresults/
+		test -e ${testdir}_big_testresults/eventalign.exp || wget "http://genome.cse.unsw.edu.au/tmp/f5c_ecoli_2kb_region_test_eventalign.exp.gz" -O ${testdir}_big_testresults/eventalign.exp.gz 
+		test -e ${testdir}_big_testresults/eventalign.exp || gunzip ${testdir}_big_testresults/eventalign.exp.gz
+		tail -n +2 ${testdir}_big_testresults/eventalign.exp | awk 		'{print $1"\t"$2"\t"$3"\t"$5"\t"$6"\t"$7"\t"$8"\t"$10"\t"$11"\t"$12"\t"$13"\t"$14}'  > ${testdir}/nanopolish.txt
+		tail -n +2 ${testdir}/result.txt | awk '{print $1"\t"$2"\t"$3"\t"$5"\t"$6"\t"$7"\t"$8"\t"$10"\t"$11"\t"$12"\t"$13"\t"$14}' > ${testdir}/f5c.txt
+		paste ${testdir}/nanopolish.txt ${testdir}/f5c.txt > ${testdir}/joined_results.txt
+		awk -f  scripts/test_eventalign.awk ${testdir}/joined_results.txt > ${testdir}/joined_diff.txt || handle_tests2 "${file}"
+	fi
 
-		join  ${testdir}/result_float.txt ${testdir}/meth_float.txt | awk -v thresh=0.1 -f scripts/test.awk > ${testdir}/floatdiff.txt || handle_tests "${file}"
-	else	
-		tail -n +2 ${testdir}/result.txt | awk '{print $1,$2,$3,$4,$8,$9,$10}' > ${testdir}/result_exact.txt
-		awk '{print $1,$2,$3,$4,$8,$9,$10}' ${testdir}/meth.exp > ${testdir}/meth_exact.txt
-		diff -q ${testdir}/meth_exact.txt ${testdir}/result_exact.txt || die "diff ${testdir}/result_exact.txt ${testdir}/meth_exact.txt failed" 
 
-		tail -n +2  ${testdir}/result.txt | awk '{print $1$2$3$4$8$9$10"\t"$5"\t"$6"\t"$7}' > ${testdir}/result_float.txt
-		awk '{print $1$2$3$4$8$9$10"\t"$5"\t"$6"\t"$7}' ${testdir}/meth.exp > ${testdir}/meth_float.txt	
-
-		join -a 1 -a 2 ${testdir}/result_float.txt ${testdir}/meth_float.txt | awk -v thresh=0.1 -f scripts/test.awk > ${testdir}/floatdiff.txt || die "${file}: Validation failed" 
-	fi	
 }
 
 mode_test() {
-
-	if [ $testdir = test/chr22_meth_example ]; then
-		cmd="${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases"
-	else
-		cmd="${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases --secondary=yes --min-mapq=0"
-	fi
-
+	cmd="${exepath} eventalign -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases"
 	case $1 in
 		valgrind) valgrind $cmd > /dev/null;;
 		gdb) gdb --args "$cmd";;
@@ -90,14 +105,14 @@ mode_test() {
 		cuda) $cmd --disable-cuda=no > ${testdir}/result.txt; execute_test;;
 		echo) echo "$cmd -t $threads > ${testdir}/result.txt";;
 		nvprof) nvprof  -f --analysis-metrics -o profile.nvprof "$cmd" --disable-cuda=no --debug-break=5 > /dev/null;;
-		custom) shift; $cmd "$@" > ${testdir}/result.txt; execute_test;;
+		custom) shift; $cmd "$@" --secondary=yes --min-mapq=0 > ${testdir}/result.txt; execute_test;;
 		*) die "Unknown mode: $1";;
 	esac
 }
 
 help_msg() {
 	echo "Test script for f5c."
-	echo "Usage: f5c_dir/script/test.sh [-c] [-b bam file] [-g reference genome] [-r fastq/fasta read] mode"
+	echo "Usage: f5c_dir/script/test_eventalign.sh [-c] [-b bam file] [-g reference genome] [-r fastq/fasta read] mode"
 	echo
 	echo "mode                 one of: valgrind/gdb/cpu/cuda/echo"
 	echo
@@ -148,13 +163,14 @@ done
 
 if [ -z "$mode" ]; then
 	if [ $testdir = test/chr22_meth_example ]; then
-		${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t "$threads" -K "$batchsize" -B "$max_bases" > ${testdir}/result.txt
-		execute_test
+		${exepath} eventalign -b ${bamfile} -g ${ref} -r ${reads} -t "$threads" -K "$batchsize" -B "$max_bases" --secondary=yes --min-mapq=0 > ${testdir}/result.txt
 	else
+		#test -e ${testdir}/f5c_event_align.summary.txt && rm ${testdir}/f5c_event_align.summary.txt
 		${exepath} index -d ${testdir}/fast5_files ${testdir}/reads.fasta
-		${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t "$threads" -K "$batchsize" -B "$max_bases" --secondary=yes --min-mapq=0 > ${testdir}/result.txt
-		execute_test
+		${exepath} eventalign -b ${bamfile} -g ${ref} -r ${reads} --secondary=yes --min-mapq=0 -B "$max_bases" > ${testdir}/result.txt
 	fi
+		mv f5c_event_align.summary.txt ${testdir}/f5c_event_align.summary.txt
+		execute_test
 else
 	mode_test "$@"
 fi

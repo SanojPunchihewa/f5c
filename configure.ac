@@ -4,8 +4,8 @@
 AC_PREREQ([2.69])
 AC_INIT([f5c], [1.0], [hasindu@unsw.edu.au])
 #AM_INIT_AUTOMAKE([foreign])
-AC_CONFIG_SRCDIR([f5c.c])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_SRCDIR([src/f5c.c])
+AC_CONFIG_HEADERS([src/config.h])
 
 dnl Variant of AC_MSG_ERROR that ensures subsequent make(1) invocations fail
 dnl until the configuration error is resolved and configure is run again.
@@ -38,7 +38,7 @@ AC_SYS_LARGEFILE
 AC_FUNC_FSEEKO
 
 # Checks for header files.
-AC_CHECK_HEADERS([float.h inttypes.h stdint.h stdlib.h string.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([float.h inttypes.h stdint.h stdlib.h string.h sys/time.h unistd.h execinfo.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
@@ -71,6 +71,9 @@ is installed.
 ])
 fi
 
+hdf_tar_install=autoconf
+hts_tar_install=autoconf
+
 locallibhts=no
 if test "$enable_systemhts" = yes; then
 	libhts=yes
@@ -80,8 +83,17 @@ if test "$enable_systemhts" = yes; then
 		MSG_ERROR([System wide HTS library development files not found! 
 		  On Debian based systems such as Ubuntu you may use sudo apt-get install libhts-dev.
 		  You can also download and install the latest release of htslib from http://www.htslib.org/download/.
+		  Or else locally install through ./scripts/install-hts.sh and run ./configure without --enable_systemhts.
 		  ])
 	fi
+	libhtsnew=yes
+	AC_CHECK_LIB([hts], [fai_load3], [], [libhtsnew=no])
+	if test $libhtsnew != yes; then
+		MSG_ERROR([System wide HTS library development files are old and does not support fai_load3! 
+		  You can also download and install the latest release of htslib from http://www.htslib.org/download/.
+		  Or else locally install through ./scripts/install-hts.sh and run ./configure without --enable_systemhts.
+		  ])
+	fi	
 
 else
 	libhts=yes
@@ -133,6 +145,8 @@ fi
 
 AC_SUBST([locallibhts])
 AC_SUBST([locallibhdf5])
+AC_SUBST([hdf_tar_install])
+AC_SUBST([hts_tar_install])
 
 
 
