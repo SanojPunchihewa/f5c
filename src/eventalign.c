@@ -1639,15 +1639,15 @@ EventalignSummary summarize_alignment(uint32_t strand_idx,
 
 void emit_event_alignment_tsv_header(FILE* fp, int8_t print_read_names, int8_t write_samples)
 {
-    fprintf(fp, "%s\t%s\t%s\t%s\t%s\t", "contig", "position", "reference_kmer",
+    PRINTTOSTREAM(fp, "%s\t%s\t%s\t%s\t%s\t", "contig", "position", "reference_kmer",
             (print_read_names? "read_name" : "read_index"), "strand");
-    fprintf(fp, "%s\t%s\t%s\t%s\t", "event_index", "event_level_mean", "event_stdv", "event_length");
-    fprintf(fp, "%s\t%s\t%s\t%s", "model_kmer", "model_mean", "model_stdv", "standardized_level");
+    PRINTTOSTREAM(fp, "%s\t%s\t%s\t%s\t", "event_index", "event_level_mean", "event_stdv", "event_length");
+    PRINTTOSTREAM(fp, "%s\t%s\t%s\t%s", "model_kmer", "model_mean", "model_stdv", "standardized_level");
 
     if(write_samples) {
-        fprintf(fp, "\t%s", "samples");
+        PRINTTOSTREAM(fp, "\t%s", "samples");
     }
-    fprintf(fp, "\n");
+    PRINTTOSTREAM(fp, "%s", "\n");
 }
 
 //event_mean = get_fully_scaled_level(ea.event_idx, ea.strand_idx);
@@ -1718,7 +1718,7 @@ void emit_event_alignment_tsv(FILE* fp,
         // basic information
         if (!print_read_names)
         {
-            fprintf(fp, "%s\t%d\t%s\t%d\t%c\t",
+            PRINTTOSTREAM(fp, "%s\t%d\t%s\t%d\t%c\t",
                     ref_name, //ea.ref_name.c_str(),
                     ea.ref_position,
                     ea.ref_kmer,
@@ -1727,7 +1727,7 @@ void emit_event_alignment_tsv(FILE* fp,
         }
         else
         {
-            fprintf(fp, "%s\t%d\t%s\t%s\t%c\t",
+            PRINTTOSTREAM(fp, "%s\t%d\t%s\t%s\t%c\t",
                     ref_name, //ea.ref_name.c_str(),
                     ea.ref_position,
                     ea.ref_kmer,
@@ -1766,8 +1766,8 @@ void emit_event_alignment_tsv(FILE* fp,
         }
 
         float standard_level = (event_mean - model_mean) / (sqrt(scalings.var) * model_stdv);
-        fprintf(fp, "%d\t%.2lf\t%.3lf\t%.5lf\t", ea.event_idx, event_mean, event_stdv, event_duration);
-        fprintf(fp, "%s\t%.2lf\t%.2lf\t%.2lf", ea.model_kmer,
+        PRINTTOSTREAM(fp, "%d\t%.2lf\t%.3lf\t%.5lf\t", ea.event_idx, event_mean, event_stdv, event_duration);
+        PRINTTOSTREAM(fp, "%s\t%.2lf\t%.2lf\t%.2lf", ea.model_kmer,
                                                model_mean,
                                                model_stdv,
                                                standard_level);
@@ -1784,7 +1784,7 @@ void emit_event_alignment_tsv(FILE* fp,
             // sample_str.resize(sample_str.size() - 1);
             // fprintf(fp, "\t%s", sample_str.c_str());
         }
-        fprintf(fp, "\n");
+        PRINTTOSTREAM(fp, "%s", "\n");
     }
 }
 

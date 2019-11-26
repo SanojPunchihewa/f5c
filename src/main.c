@@ -59,6 +59,7 @@ int print_usage(){
 
 FILE* OUTPUT_FILE_POINTER;
 char* OUTPUT_FILE_PATH;
+char* EVENT_SUMMARY_FILE_PATH = NULL;
 
 int init(int argc, char* argv[]){
 

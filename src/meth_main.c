@@ -82,6 +82,7 @@ static struct option long_options[] = {
     {"write-dump",required_argument, 0, 0},        //28 write the raw data as a dump
     {"read-dump",required_argument, 0, 0},         //29 read the raw data as a dump
     {"output",required_argument, 0, 'o'},          //30 output to a file [stdout]
+    {"event-summary",required_argument, 0, 0},     //31 event summary file
     {0, 0, 0, 0}};
 
 
@@ -183,6 +184,7 @@ void* pthread_post_processor(void* voidargs){
 }
 
 extern char* OUTPUT_FILE_PATH;
+extern char* EVENT_SUMMARY_FILE_PATH;
 extern FILE* OUTPUT_FILE_POINTER;
 
 //todo : need to print error message and arg check with respect to eventalign
@@ -295,12 +297,14 @@ int meth_main(int argc, char* argv[], int8_t mode) {
             yes_or_no(&opt, F5C_RD_RAW_DUMP, longindex, optarg, 1);
         } else if(c=='o'){
             OUTPUT_FILE_PATH = optarg;
-            if(mode == 0){
                 OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "w");
                 if(OUTPUT_FILE_POINTER == NULL) {
                     ERROR("Could not open output file path %s", OUTPUT_FILE_PATH);
                     exit(1);
                 }
+        } else if(c == 0 && longindex == 31){ //event summary file path
+            if(mode == 1){
+                EVENT_SUMMARY_FILE_PATH = optarg;
             }
         }
     }
@@ -371,7 +375,7 @@ int meth_main(int argc, char* argv[], int8_t mode) {
             PRINTTOSTREAM(core->event_summary_fp, "%s", "read_index\tread_name\tfast5_path\tmodel_name\tstrand\tnum_events\t");
             PRINTTOSTREAM(core->event_summary_fp, "%s", "num_steps\tnum_skips\tnum_stays\ttotal_duration\tshift\tscale\tdrift\tvar\n");
         }
-        emit_event_alignment_tsv_header(stdout, 1, 0);
+        emit_event_alignment_tsv_header(OUTPUT_FILE_POINTER, 1, 0);
     }
     int32_t counter=0;
 
