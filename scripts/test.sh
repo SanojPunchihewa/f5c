@@ -53,6 +53,7 @@ handle_tests() {
 	echo "$missing entries in the truthset are missing in the testset"
 	failp=$(echo "$numfailed/$numcases" | bc)
 	[ "$failp" -gt 0 ] && die "${1}: Validation failed"
+	echo "Validation passed"
 }
 
 execute_test() {
@@ -75,7 +76,12 @@ execute_test() {
 }
 
 mode_test() {
-	cmd="${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases"
+
+	if [ $testdir = test/chr22_meth_example ]; then
+		cmd="${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases"
+	else
+		cmd="${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t ${threads} -K $batchsize -B $max_bases --secondary=yes --min-mapq=0"
+	fi
 
 	case $1 in
 		valgrind) valgrind $cmd > /dev/null;;
@@ -84,7 +90,7 @@ mode_test() {
 		cuda) $cmd --disable-cuda=no > ${testdir}/result.txt; execute_test;;
 		echo) echo "$cmd -t $threads > ${testdir}/result.txt";;
 		nvprof) nvprof  -f --analysis-metrics -o profile.nvprof "$cmd" --disable-cuda=no --debug-break=5 > /dev/null;;
-		custom) shift; $cmd "$@" --secondary=yes --min-mapq=0 > ${testdir}/result.txt; execute_test;;
+		custom) shift; $cmd "$@" > ${testdir}/result.txt; execute_test;;
 		*) die "Unknown mode: $1";;
 	esac
 }
@@ -146,7 +152,7 @@ if [ -z "$mode" ]; then
 		execute_test
 	else
 		${exepath} index -d ${testdir}/fast5_files ${testdir}/reads.fasta
-		${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} --secondary=yes --min-mapq=0 -B "$max_bases" > ${testdir}/result.txt
+		${exepath} call-methylation -b ${bamfile} -g ${ref} -r ${reads} -t "$threads" -K "$batchsize" -B "$max_bases" --secondary=yes --min-mapq=0 > ${testdir}/result.txt
 		execute_test
 	fi
 else

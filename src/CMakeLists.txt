@@ -15,6 +15,7 @@ set_source_files_properties(meth.c PROPERTIES LANGUAGE CXX)
 set_source_files_properties(hmm.c PROPERTIES LANGUAGE CXX)
 set_source_files_properties(freq.c PROPERTIES LANGUAGE CXX)
 set_source_files_properties(eventalign.c PROPERTIES LANGUAGE CXX)
+set_source_files_properties(nanopolish_fast5_io.c PROPERTIES LANGUAGE CXX)
 
 # creating config.h file
 # add_custom_command does not create a new target. You have to define targets explicitly
@@ -48,6 +49,7 @@ set (METH meth.c f5c.h fast5lite.h f5cmisc.h)
 set (HMM hmm.c f5c.h fast5lite.h f5cmisc.h matrix.h logsum.h)
 set (FREQ freq.c khash.h)
 set (EVENT_ALIGN eventalign.c)
+set (NANOPOLISH_FAST5_IO nanopolish_fast5_io.c)
 
 # Android Logging API for C/C++
 find_library(ANDROID_LOG_LIB log)
@@ -56,7 +58,7 @@ find_library(ANDROID_LOG_LIB log)
 # add_executable(f5c_exe ${MAIN} ${METH_MAIN} ${F5C} ${EVENTS} ${NANOPOLISH_READ} ${NANOPOLISH_INDEX} ${MODEL} ${ALIGN} ${METH} ${HMM} ${FREQ} ${EVENT_ALIGN})
 
 # Build a shared lib
-add_library(f5cshared SHARED ${MAIN} ${METH_MAIN} ${F5C} ${EVENTS} ${NANOPOLISH_READ} ${NANOPOLISH_INDEX} ${MODEL} ${ALIGN} ${METH} ${HMM} ${FREQ} ${EVENT_ALIGN})
+add_library(f5cshared SHARED ${MAIN} ${METH_MAIN} ${F5C} ${EVENTS} ${NANOPOLISH_READ} ${NANOPOLISH_INDEX} ${MODEL} ${ALIGN} ${METH} ${HMM} ${FREQ} ${EVENT_ALIGN} ${NANOPOLISH_FAST5_IO})
 
 
 # htslib dependency

@@ -44,17 +44,24 @@ int meth_main(int argc, char* argv[], int8_t mode);
 int index_main(int argc, char** argv);
 int freq_main(int argc, char **argv);
 
-int print_usage(){
-    INFO("working LOG_INFO %s number is %d","string",100);
-    INFO("%s","Usage: f5c <command> [options]\n\n");
-    INFO("%s","command:\n");
-    INFO("%s","         index               Build an index mapping from basecalled reads to the signals measured by the sequencer (same as nanopolish index)\n");
-    INFO("%s","         call-methylation    Classify nucleotides as methylated or not (optimised nanopolish call-methylation)\n");
-    INFO("%s","         meth-freq           Calculate methylation frequency at genomic CpG sites (optimised nanopolish calculate_methylation_frequency.py)\n");
-    INFO("%s","         eventalign          Align nanopore events to reference k-mers (optimised nanopolish eventalign)\n\n");
+int print_usage(FILE *fp_help){
 
+    fprintf(fp_help,"Usage: f5c <command> [options]\n\n");
+    fprintf(fp_help,"command:\n");
+    fprintf(fp_help,"         index               Build an index mapping from basecalled reads to the signals measured by the sequencer (same as nanopolish index)\n");
+    fprintf(fp_help,"         call-methylation    Classify nucleotides as methylated or not (optimised nanopolish call-methylation)\n");
+    fprintf(fp_help,"         meth-freq           Calculate methylation frequency at genomic CpG sites (optimised nanopolish calculate_methylation_frequency.py)\n");
+    fprintf(fp_help,"         eventalign          Align nanopore events to reference k-mers (optimised nanopolish eventalign)\n\n");
 
-    exit(EXIT_FAILURE);
+    if(fp_help==stderr){
+        exit(EXIT_FAILURE);
+    }
+    else if(fp_help==stdout){
+        exit(EXIT_SUCCESS);
+    }
+    else{
+        assert(0);
+    }
 }
 
 FILE* OUTPUT_FILE_POINTER;
@@ -69,7 +76,7 @@ int init(int argc, char* argv[]){
     int ret=1;
 
     if(argc<2){
-        return print_usage();
+        return print_usage(stderr);
     }
     if(strcmp(argv[1],"index")==0){
         ret=index_main(argc-1, argv+1);
@@ -83,9 +90,16 @@ int init(int argc, char* argv[]){
     else if(strcmp(argv[1],"meth-freq")==0){
         ret=freq_main(argc-1, argv+1);
     }
+    else if(strcmp(argv[1],"--version")==0 || strcmp(argv[1],"-V")==0){
+        fprintf(stdout,"F5C %s\n",F5C_VERSION);
+        exit(EXIT_SUCCESS);
+    }
+    else if(strcmp(argv[1],"--help")==0 || strcmp(argv[1],"-h")==0){
+        print_usage(stdout);
+    }
     else{
-        ERROR("[f5c] Unrecognised command %s\n",argv[1]);
-        print_usage();
+        fprintf(stderr,"[f5c] Unrecognised command %s\n",argv[1]);
+        print_usage(stderr);
     }
 
     INFO("\n[%s] CMD:", __func__);

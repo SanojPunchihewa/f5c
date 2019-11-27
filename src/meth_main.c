@@ -82,7 +82,8 @@ static struct option long_options[] = {
     {"write-dump",required_argument, 0, 0},        //28 write the raw data as a dump
     {"read-dump",required_argument, 0, 0},         //29 read the raw data as a dump
     {"output",required_argument, 0, 'o'},          //30 output to a file [stdout]
-    {"event-summary",required_argument, 0, 0},     //31 event summary file
+    {"iop",required_argument, 0, 0},               //31 number of I/O processes
+    {"event-summary",required_argument, 0, 0},     //32 event summary file
     {0, 0, 0, 0}};
 
 
@@ -187,6 +188,13 @@ extern char* OUTPUT_FILE_PATH;
 extern char* EVENT_SUMMARY_FILE_PATH;
 extern FILE* OUTPUT_FILE_POINTER;
 
+void slow_fast5_warn(core_t *core){
+
+    if(core->db_fast5_time  > core->process_db_time * 1.5){
+        INFO("%s","Fast5 reading took more time than processing. Try increasing --iop. See http://bit.ly/f5cperf");
+    }
+}
+
 //todo : need to print error message and arg check with respect to eventalign
 int meth_main(int argc, char* argv[], int8_t mode) {
 
@@ -239,7 +247,7 @@ int meth_main(int argc, char* argv[], int8_t mode) {
             opt.verbosity = atoi(optarg);
         }
         else if (c=='V'){
-            STDERR("F5C %s\n",F5C_VERSION);
+            fprintf(stdout,"F5C %s\n",F5C_VERSION);
             exit(EXIT_SUCCESS);
         }
         else if (c=='h'){
@@ -295,14 +303,20 @@ int meth_main(int argc, char* argv[], int8_t mode) {
             yes_or_no(&opt, F5C_WR_RAW_DUMP, longindex, optarg, 1);
         } else if(c == 0 && longindex == 29){ //read the raw dump of the fast5 files
             yes_or_no(&opt, F5C_RD_RAW_DUMP, longindex, optarg, 1);
-        } else if(c=='o'){
+        } else if(c=='o') {
             OUTPUT_FILE_PATH = optarg;
-                OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "w");
-                if(OUTPUT_FILE_POINTER == NULL) {
-                    ERROR("Could not open output file path %s", OUTPUT_FILE_PATH);
-                    exit(1);
-                }
-        } else if(c == 0 && longindex == 31){ //event summary file path
+            OUTPUT_FILE_POINTER = fopen(OUTPUT_FILE_PATH, "w");
+            if (OUTPUT_FILE_POINTER == NULL) {
+                ERROR("Could not open output file path %s", OUTPUT_FILE_PATH);
+                exit(1);
+            }
+        } else if (c == 0 && longindex == 31) {  //I/O procs
+            opt.num_iop = atoi(optarg);
+            if (opt.num_iop < 1) {
+                ERROR("Number of I/O processes should be larger than 0. You entered %d", opt.num_iop);
+                exit(EXIT_FAILURE);
+            }
+        } else if(c == 0 && longindex == 32){ //event summary file path
             if(mode == 1){
                 EVENT_SUMMARY_FILE_PATH = optarg;
             }
@@ -310,46 +324,45 @@ int meth_main(int argc, char* argv[], int8_t mode) {
     }
 
     if (fastqfile == NULL || bamfilename == NULL || fastafile == NULL || fp_help == stdout) {
-        PRINTTOSTREAM(
-            fp_help,
-            "Usage: f5c %s [OPTIONS] -r reads.fa -b alignments.bam -g genome.fa\n",mode==1 ? "eventalign" : "call-methylation");
-        PRINTTOSTREAM(fp_help, "%s","   -r FILE                    fastq/fasta read file\n");
-        PRINTTOSTREAM(fp_help, "%s","   -b FILE                    sorted bam file\n");
-        PRINTTOSTREAM(fp_help, "%s","   -g FILE                    reference genome\n");
-        PRINTTOSTREAM(fp_help, "%s","   -t INT                     number of threads [%d]\n",opt.num_thread);
-        PRINTTOSTREAM(fp_help, "%s","   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
-        PRINTTOSTREAM(fp_help, "%s","   -B FLOAT[K/M/G]            max number of bases loaded at once [%.1fM]\n",opt.batch_size_bases/(float)(1000*1000));
-        PRINTTOSTREAM(fp_help, "%s","   -h                         help\n");
-        PRINTTOSTREAM(fp_help, "%s","   --min-mapq INT             minimum mapping quality [%d]\n",opt.min_mapq);
-        PRINTTOSTREAM(fp_help, "%s","   --secondary=yes|no         consider secondary mappings or not [%s]\n",(opt.flag&F5C_SECONDARY_YES)?"yes":"no");
-        PRINTTOSTREAM(fp_help, "%s","   -o FILE                    output to file [stdout]\n");
-        PRINTTOSTREAM(fp_help, "%s","   --skip-unreadable=yes|no   skip any unreadable fast5 or terminate program [%s]\n",(opt.flag&F5C_SKIP_UNREADABLE?"yes":"no"));
-        PRINTTOSTREAM(fp_help, "%s","   --verbose INT              verbosity level [%d]\n",opt.verbosity);
-        PRINTTOSTREAM(fp_help, "%s","   --version                  print version\n");
+        fprintf(
+                fp_help,
+                "Usage: f5c %s [OPTIONS] -r reads.fa -b alignments.bam -g genome.fa\n",mode==1 ? "eventalign" : "call-methylation");
+        fprintf(fp_help,"   -r FILE                    fastq/fasta read file\n");
+        fprintf(fp_help,"   -b FILE                    sorted bam file\n");
+        fprintf(fp_help,"   -g FILE                    reference genome\n");
+        fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
+        fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
+        fprintf(fp_help,"   -B FLOAT[K/M/G]            max number of bases loaded at once [%.1fM]\n",opt.batch_size_bases/(float)(1000*1000));
+        fprintf(fp_help,"   -h                         help\n");
+        fprintf(fp_help,"   -o FILE                    output to file [stdout]\n");
+        fprintf(fp_help,"   --iop [INT]                number of I/O processes to read fast5 files [%d]\n",opt.num_iop);
+        fprintf(fp_help,"   --min-mapq INT             minimum mapping quality [%d]\n",opt.min_mapq);
+        fprintf(fp_help,"   --secondary=yes|no         consider secondary mappings or not [%s]\n",(opt.flag&F5C_SECONDARY_YES)?"yes":"no");
+        fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",opt.verbosity);
+        fprintf(fp_help,"   --version                  print version\n");
 #ifdef HAVE_CUDA
-        PRINTTOSTREAM(fp_help,"   --disable-cuda=yes|no      disable running on CUDA [%s]\n",(opt.flag&F5C_DISABLE_CUDA?"yes":"no"));
-        PRINTTOSTREAM(fp_help,"   --cuda-dev-id INT          CUDA device ID to run kernels on [%d]\n",opt.cuda_dev_id);
-        PRINTTOSTREAM(fp_help,"   --cuda-max-lf FLOAT        reads with length <= cuda-max-lf*avg_readlen on GPU, rest on CPU [%.1f]\n",opt.cuda_max_readlen);
-        PRINTTOSTREAM(fp_help,"   --cuda-avg-epk FLOAT       average number of events per kmer - for allocating GPU arrays [%.1f]\n",opt.cuda_avg_events_per_kmer);
-        PRINTTOSTREAM(fp_help,"   --cuda-max-epk FLOAT       reads with events per kmer <= cuda_max_epk on GPU, rest on CPU [%.1f]\n",opt.cuda_max_avg_events_per_kmer);
+        fprintf(fp_help,"   --disable-cuda=yes|no      disable running on CUDA [%s]\n",(opt.flag&F5C_DISABLE_CUDA?"yes":"no"));
+        fprintf(fp_help,"   --cuda-dev-id INT          CUDA device ID to run kernels on [%d]\n",opt.cuda_dev_id);
+        fprintf(fp_help,"   --cuda-max-lf FLOAT        reads with length <= cuda-max-lf*avg_readlen on GPU, rest on CPU [%.1f]\n",opt.cuda_max_readlen);
+        fprintf(fp_help,"   --cuda-avg-epk FLOAT       average number of events per kmer - for allocating GPU arrays [%.1f]\n",opt.cuda_avg_events_per_kmer);
+        fprintf(fp_help,"   --cuda-max-epk FLOAT       reads with events per kmer <= cuda_max_epk on GPU, rest on CPU [%.1f]\n",opt.cuda_max_avg_events_per_kmer);
 #endif
-
-
-        PRINTTOSTREAM(fp_help, "%s","advanced options:\n");
-        PRINTTOSTREAM(fp_help, "%s","   --kmer-model FILE          custom k-mer model file\n");
-        PRINTTOSTREAM(fp_help, "%s","   --print-events=yes|no      prints the event table\n");
-        PRINTTOSTREAM(fp_help, "%s","   --print-banded-aln=yes|no  prints the event alignment\n");
-        PRINTTOSTREAM(fp_help, "%s","   --print-scaling=yes|no     prints the estimated scalings\n");
-        PRINTTOSTREAM(fp_help, "%s","   --print-raw=yes|no         prints the raw signal\n");
-        PRINTTOSTREAM(fp_help, "%s","   --debug-break [INT]        break after processing the specified batch\n");
-        PRINTTOSTREAM(fp_help, "%s","   --profile-cpu=yes|no       process section by section (used for profiling on CPU)\n");
-        PRINTTOSTREAM(fp_help, "%s","   --skip-ultra FILE          skip ultra long reads and write those entries to the bam file provided as the argument\n");
-        PRINTTOSTREAM(fp_help, "%s","   --ultra-thresh [INT]       threshold to skip ultra long reads [%ld]\n",opt.ultra_thresh);
-        PRINTTOSTREAM(fp_help, "%s","   --write-dump=yes|no        write the fast5 dump to a file or not\n");
-        PRINTTOSTREAM(fp_help, "%s","   --read-dump=yes|no         read from a fast5 dump file or not\n");
+        fprintf(fp_help,"advanced options:\n");
+        fprintf(fp_help,"   --kmer-model FILE          custom k-mer model file\n");
+        fprintf(fp_help,"   --skip-unreadable=yes|no   skip any unreadable fast5 or terminate program [%s]\n",(opt.flag&F5C_SKIP_UNREADABLE?"yes":"no"));
+        fprintf(fp_help,"   --print-events=yes|no      prints the event table\n");
+        fprintf(fp_help,"   --print-banded-aln=yes|no  prints the event alignment\n");
+        fprintf(fp_help,"   --print-scaling=yes|no     prints the estimated scalings\n");
+        fprintf(fp_help,"   --print-raw=yes|no         prints the raw signal\n");
+        fprintf(fp_help,"   --debug-break [INT]        break after processing the specified batch\n");
+        fprintf(fp_help,"   --profile-cpu=yes|no       process section by section (used for profiling on CPU)\n");
+        fprintf(fp_help,"   --skip-ultra FILE          skip ultra long reads and write those entries to the bam file provided as the argument\n");
+        fprintf(fp_help,"   --ultra-thresh [INT]       threshold to skip ultra long reads [%ld]\n",opt.ultra_thresh);
+        fprintf(fp_help,"   --write-dump=yes|no        write the fast5 dump to a file or not\n");
+        fprintf(fp_help,"   --read-dump=yes|no         read from a fast5 dump file or not\n");
 #ifdef HAVE_CUDA
-        PRINTTOSTREAM(fp_help,"   - cuda-mem-frac FLOAT      Fraction of free GPU memory to allocate [0.9 (0.7 for tegra)]\n");
-        PRINTTOSTREAM(fp_help,"   --cuda-block-size\n");
+        fprintf(fp_help,"   - cuda-mem-frac FLOAT      Fraction of free GPU memory to allocate [0.9 (0.7 for tegra)]\n");
+        fprintf(fp_help,"   --cuda-block-size\n");
 #endif
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
@@ -407,6 +420,8 @@ int meth_main(int argc, char* argv[], int8_t mode) {
         //free temporary
         free_db_tmp(db);
 
+        slow_fast5_warn(core);
+
         if(opt.debug_break==counter){
             break;
         }
@@ -443,6 +458,7 @@ int meth_main(int argc, char* argv[], int8_t mode) {
                 realtime() - realtime0, cputime() / (realtime() - realtime0),
                 tid_p);
             }
+            slow_fast5_warn(core);
         }
         first_flag_p=1;
 
@@ -577,7 +593,7 @@ int meth_main(int argc, char* argv[], int8_t mode) {
 #endif
 
     //free the core data structure
-    free_core(core);
+    free_core(core,opt);
 
     // A program that scans multiple argument vectors, or rescans the same vector more than once,
     // and wants to make use of GNU extensions such as '+' and '-' at the start of optstring,
