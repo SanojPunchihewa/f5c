@@ -450,7 +450,6 @@ void free_core(core_t* core,opt_t opt) {
         if (core->event_summary_fp != NULL){
             fclose(core->event_summary_fp);
         }
-        fclose(core->event_summary_fp);
     }
     if(opt.num_iop > 1){
         free_iop(core,opt);
